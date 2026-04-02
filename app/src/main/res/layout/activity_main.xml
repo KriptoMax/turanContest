@@ -128,7 +128,7 @@
         app:fabCustomSize="65dp"
         app:maxImageSize="43dp"
 
-        android:src="@drawable/ic_add1"
+        android:src="@drawable/ic_add"
         android:scaleType="center"
         android:backgroundTint="@color/orange"
         android:layout_marginBottom="60dp"
