@@ -2,10 +2,10 @@ package com.example.studyproject3.data.RoomDatabase
 
 import androidx.room.RoomDatabase
 import androidx.room.Database
-import com.example.studyproject3.BaseUsers.User
-import com.example.studyproject3.data.UserDao
+import com.example.studyproject3.BaseTasks.Task
+import com.example.studyproject3.data.TaskDao
 
-@Database(entities = [User::class], version = 1)
+@Database(entities = [Task::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun userDao(): UserDao
+    abstract fun taskDao(): TaskDao
 }

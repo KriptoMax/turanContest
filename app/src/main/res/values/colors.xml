@@ -4,7 +4,9 @@
     <color name="grey">#575352</color>
     <color name="white">#FFFFFFFF</color>
     <color name="blue">#6283d9</color>
+    <color name="lightblue">#adcdff</color>
     <color name="green">#74d962</color>
+    <color name="darkgreen">#0a5c20</color>
     <color name="yellow">#d9cf62</color>
     <color name="red">#ff0000</color>
     <color name="orange">#d9a562</color>
