@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
                     db.taskDao().deleteTask(task)
                     loadTasks()
                 }
-            },
+            },//
             onEdit = { task ->
                 // Открываем диалог для редактирования существующей задачи
                 val dialog = AddTaskDialog { updatedTitle ->
