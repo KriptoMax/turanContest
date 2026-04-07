@@ -12,7 +12,7 @@ class TransitionController(private val binding: ActivityMainBinding,
                            private val context: Context) {
     fun oneTask(){
         with(binding){
-            btn2Task1.setOnClickListener {
+            tvTaskVault.setOnClickListener {
                 controllerOneTaskActivity()
             }
         }

@@ -13,4 +13,14 @@
     <color name="lightOrange">#ffbb00</color>
     <color name="darkOrange">#f07407</color>
 
+    <color name="firstGreen">#C0DCC0</color>
+    <color name="secondGreen">#A9C5B2</color>
+    <color name="threeGreen">#72B087</color>
+    <color name="fourGreen">#E6EDD1</color>
+
+    <color name="firstDarkColor">#8589AC</color>
+    <color name="secondDarkColor">#596F9A</color>
+    <color name="threeDarkColor">#405077</color>
+    <color name="fourDarkColor">#303147</color>
+
 </resources>

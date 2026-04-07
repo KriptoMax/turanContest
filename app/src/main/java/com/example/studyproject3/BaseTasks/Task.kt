@@ -10,5 +10,4 @@ data class Task(
     val title: String = "",
     val destination: String = "",
     val percent: Int = 0,
-    val diff: String = ""
 )
