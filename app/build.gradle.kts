@@ -2,19 +2,18 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 
-    id("kotlin-kapt") // Добавьте это, если используете kapt в зависимостях
+    id("kotlin-kapt")
+    id("com.google.gms.google-services")
 }
 
 android {
     namespace = "com.example.studyproject3"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36 // Обновлено до 36, так как библиотеки требуют этой версии
 
     defaultConfig {
         applicationId = "com.example.studyproject3"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 36 // Обновлено до 36 для соответствия compileSdk
         versionCode = 1
         versionName = "1.0"
 
@@ -59,14 +58,20 @@ dependencies {
     // --- Room ---
     val roomVersion = "2.8.4"
     implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion") // Обязательно для suspend функций в DAO
+    implementation("androidx.room:room-ktx:$roomVersion")
 
-    // Если используете Kotlin (Kapt)
     kapt("androidx.room:room-compiler:$roomVersion")
-    // ИЛИ если перешли на KSP (что сейчас рекомендуют)
-    // ksp("androidx.room:room-compiler:$roomVersion")
+
+    // --- Koin ---
+    val koinVersion = "3.5.6"
+    implementation("io.insert-koin:koin-android:$koinVersion")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // --- Firebase ---
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
 }

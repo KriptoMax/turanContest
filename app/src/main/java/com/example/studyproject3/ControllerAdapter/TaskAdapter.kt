@@ -1,4 +1,4 @@
-package com.example.studyproject3.ControllerActivity
+package com.example.studyproject3.ControllerAdapter
 
 import android.content.Intent
 import android.view.LayoutInflater
@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import com.example.studyproject3.BaseTasks.Task
+import com.example.studyproject3.ControllerActivity.DetailTaskActivity
 import com.example.studyproject3.databinding.ItemTaskBinding
 import com.example.studyproject3.R
 

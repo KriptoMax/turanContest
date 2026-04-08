@@ -5,10 +5,10 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "subtasks")
 data class SubTask(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
-    val taskId: Int,
+    @PrimaryKey
+    var id: String = "",
+    val taskId: String = "",
     val title: String = "",
     val deadline: String = "",
-    val isCompleted: Boolean = false
+    val completed: Boolean = false // Переименовано для корректной работы с Firebase
 )

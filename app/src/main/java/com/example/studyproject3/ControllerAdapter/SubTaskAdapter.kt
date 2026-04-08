@@ -1,4 +1,4 @@
-package com.example.studyproject3.ControllerActivity
+package com.example.studyproject3.ControllerAdapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -24,14 +24,16 @@ class SubTaskAdapter(
 
     override fun onBindViewHolder(holder: SubTaskViewHolder, position: Int) {
         val subTask = subTasks[position]
+        
         holder.binding.tvSubTaskTitle.text = subTask.title
         holder.binding.tvSubTaskDeadline.text = if (subTask.deadline.isNotEmpty()) "До: ${subTask.deadline}" else ""
         
-        holder.binding.cbSubTask.setOnCheckedChangeListener(null)
-        holder.binding.cbSubTask.isChecked = subTask.isCompleted
+        // Используем новое имя поля 'completed'
+        holder.binding.cbSubTask.isChecked = subTask.completed
 
-        holder.binding.cbSubTask.setOnCheckedChangeListener { _, isChecked ->
-            onToggle(subTask.copy(isCompleted = isChecked))
+        holder.binding.cbSubTask.setOnClickListener {
+            val isChecked = holder.binding.cbSubTask.isChecked
+            onToggle(subTask.copy(completed = isChecked))
         }
 
         holder.binding.btnMenuSub.setOnClickListener { view ->

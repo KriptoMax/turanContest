@@ -5,32 +5,23 @@ import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.room.Room
 import com.example.studyproject3.BaseTasks.Task
-import com.example.studyproject3.data.RoomDatabase.AppDatabase
 import com.example.studyproject3.HandlerController.TransitionController
 import com.example.studyproject3.databinding.ActivityMainBinding
-import kotlinx.coroutines.launch
 import com.example.studyproject3.R
-
+import com.example.studyproject3.ControllerAdapter.TaskAdapter
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import org.koin.android.ext.android.inject
 
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
-    private val binding
-        get() = _binding ?: throw IllegalStateException("Binding for MainActivity must not be null")
+    private val binding get() = _binding!!
 
     private lateinit var taskAdapter: TaskAdapter
-
-    val db by lazy {
-        Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java, "my_app_db"
-        )
-            .fallbackToDestructiveMigration()
-            .build()
-    }
+    private val firestore: FirebaseFirestore by inject()
+    private var tasksListener: ListenerRegistration? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,14 +31,13 @@ class MainActivity : AppCompatActivity() {
 
         val controller = TransitionController(binding, this)
         controller.oneTask()
+        
         setupRecyclerView()
-        loadTasks()
+        observeTasks()
 
         binding.btn1Create.setOnClickListener {
-            // Для новой задачи передаем пустые строки
             val dialog = AddTaskDialog { title, deadline ->
                 saveTask(title, deadline)
-                Toast.makeText(this, "Добавлено: $title", Toast.LENGTH_SHORT).show()
             }
             dialog.show(supportFragmentManager, "AddTaskDialog")
         }
@@ -55,7 +45,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnProfile.setOnClickListener { view ->
             val popup = PopupMenu(this, view)
             popup.menuInflater.inflate(R.menu.top_app_menu, popup.menu)
-
             popup.setOnMenuItemClickListener { item ->
                 if (item.itemId == R.id.creator_nickname) {
                     Toast.makeText(this, "Это ваш профиль", Toast.LENGTH_SHORT).show()
@@ -69,14 +58,8 @@ class MainActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         taskAdapter = TaskAdapter(
             mutableListOf(),
-            onDelete = { task ->
-                lifecycleScope.launch {
-                    db.taskDao().deleteTask(task)
-                    loadTasks()
-                }
-            },
+            onDelete = { task -> deleteTask(task) },
             onEdit = { task ->
-                // Передаем текущие данные задачи для редактирования
                 val dialog = AddTaskDialog(
                     initialTitle = task.title,
                     initialDeadline = task.deadline
@@ -90,32 +73,51 @@ class MainActivity : AppCompatActivity() {
         binding.recV.adapter = taskAdapter
     }
 
-    private fun loadTasks() {
-        lifecycleScope.launch {
-            val tasks = db.taskDao().getAllTasks()
-            taskAdapter.updateData(tasks)
-        }
+    private fun observeTasks() {
+        tasksListener = firestore.collection("tasks")
+            .addSnapshotListener { snapshots, e ->
+                if (e != null) {
+                    Toast.makeText(this, "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
+                    return@addSnapshotListener
+                }
+
+                val taskList = snapshots?.map { doc ->
+                    doc.toObject(Task::class.java).apply { id = doc.id }
+                } ?: emptyList()
+                
+                taskAdapter.updateData(taskList)
+            }
     }
 
     private fun saveTask(title: String, deadline: String) {
-        lifecycleScope.launch {
-            val newTask = Task(title = title, deadline = deadline)
-            db.taskDao().insertTask(newTask)
-            loadTasks()
-        }
+        val newTask = Task(title = title, deadline = deadline)
+        firestore.collection("tasks").add(newTask)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Задача добавлена в облако", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun updateTask(task: Task, newTitle: String, newDeadline: String) {
-        lifecycleScope.launch {
-            val updatedTask = task.copy(title = newTitle, deadline = newDeadline)
-            db.taskDao().updateTask(updatedTask)
-            loadTasks()
-            Toast.makeText(this@MainActivity, "Задача обновлена", Toast.LENGTH_SHORT).show()
-        }
+        val updatedData = mapOf(
+            "title" to newTitle,
+            "deadline" to newDeadline
+        )
+        firestore.collection("tasks").document(task.id).update(updatedData)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Обновлено", Toast.LENGTH_SHORT).show()
+            }
     }
 
-    override fun onResume() {
-        super.onResume()
-        loadTasks()
+    private fun deleteTask(task: Task) {
+        firestore.collection("tasks").document(task.id).delete()
+            .addOnSuccessListener {
+                Toast.makeText(this, "Удалено", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        tasksListener?.remove()
+        _binding = null
     }
 }

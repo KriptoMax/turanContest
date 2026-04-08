@@ -5,8 +5,8 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "tasks")
 data class Task(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    var id: String = "", // Firebase uses String IDs
     val title: String = "",
     val deadline: String = "",
     val percent: Int = 0,

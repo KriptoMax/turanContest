@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "810871129373",
+    "project_id": "turancontest",
+    "storage_bucket": "turancontest.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:810871129373:android:7ad4a2f09682c282e84df4",
+        "android_client_info": {
+          "package_name": "com.example.studyproject3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAn5KcVK9yTbCr2ZKTtWozVTZvN2rgycag"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

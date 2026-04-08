@@ -5,29 +5,27 @@ import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.room.Room
 import com.example.studyproject3.BaseTasks.SubTask
 import com.example.studyproject3.BaseTasks.Task
-import com.example.studyproject3.data.RoomDatabase.AppDatabase
 import com.example.studyproject3.databinding.ActivityDetailTaskBinding
-import kotlinx.coroutines.launch
 import com.example.studyproject3.R
+import com.example.studyproject3.ControllerAdapter.SubTaskAdapter
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import org.koin.android.ext.android.inject
 
 class DetailTaskActivity : AppCompatActivity() {
     private var _binding: ActivityDetailTaskBinding? = null
     private val binding get() = _binding!!
 
     private lateinit var subTaskAdapter: SubTaskAdapter
-    private var taskId: Int = -1
+    private var taskId: String = ""
     private var currentTask: Task? = null
-
-    val db by lazy {
-        Room.databaseBuilder(applicationContext, AppDatabase::class.java, "my_app_db")
-            .fallbackToDestructiveMigration()
-            .build()
-    }
+    
+    private val firestore: FirebaseFirestore by inject()
+    private var subTasksListener: ListenerRegistration? = null
+    private var taskListener: ListenerRegistration? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,11 +33,11 @@ class DetailTaskActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        taskId = intent.getIntExtra("TASK_ID", -1)
+        taskId = intent.getStringExtra("TASK_ID") ?: ""
         
         setupRecyclerView()
-        loadTaskInfo()
-        loadSubTasks()
+        observeTaskInfo()
+        observeSubTasks()
 
         binding.tvTaskVault.setOnClickListener {
             finish()
@@ -59,8 +57,8 @@ class DetailTaskActivity : AppCompatActivity() {
         }
 
         binding.btn1Create1.setOnClickListener {
-            val dialog = AddTaskDialog { title, _ ->
-                saveSubTask(title)
+            val dialog = AddTaskDialog { title, deadline ->
+                saveSubTask(title, deadline)
             }
             dialog.show(supportFragmentManager, "AddSubTaskDialog")
         }
@@ -77,96 +75,116 @@ class DetailTaskActivity : AppCompatActivity() {
         binding.recV.adapter = subTaskAdapter
     }
 
-    private fun loadTaskInfo() {
-        lifecycleScope.launch {
-            currentTask = db.taskDao().getAllTasks().find { it.id == taskId }
-            currentTask?.let {
-                binding.tvTaskName.text = it.title
-                binding.tvDeadlineDetail.text = "До: ${it.deadline}"
-                binding.pbTaskDetail.progress = it.percent
-                binding.tvPercentDetail.text = "${it.percent}%"
+    private fun observeTaskInfo() {
+        if (taskId.isEmpty()) return
+        
+        taskListener = firestore.collection("tasks").document(taskId)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null || snapshot == null || !snapshot.exists()) return@addSnapshotListener
+                
+                currentTask = snapshot.toObject(Task::class.java)?.apply { id = snapshot.id }
+                currentTask?.let {
+                    binding.tvTaskName.text = it.title
+                    binding.tvDeadlineDetail.text = "До: ${it.deadline}"
+                    binding.pbTaskDetail.progress = it.percent
+                    binding.tvPercentDetail.text = "${it.percent}%"
+                }
             }
-        }
     }
 
-    private fun loadSubTasks() {
-        lifecycleScope.launch {
-            val subTasks = db.subTaskDao().getSubTasksByTaskId(taskId)
-            subTaskAdapter.updateData(subTasks)
-            calculateAndSaveProgress(subTasks)
-        }
+    private fun observeSubTasks() {
+        if (taskId.isEmpty()) return
+
+        subTasksListener = firestore.collection("subtasks")
+            .whereEqualTo("taskId", taskId)
+            .addSnapshotListener { snapshots, e ->
+                if (e != null) {
+                    Toast.makeText(this, "Ошибка загрузки подзадач", Toast.LENGTH_SHORT).show()
+                    return@addSnapshotListener
+                }
+
+                val subTasks = snapshots?.map { doc ->
+                    doc.toObject(SubTask::class.java).apply { id = doc.id }
+                } ?: emptyList()
+                
+                subTaskAdapter.updateData(subTasks)
+                
+                // Считаем прогресс на основе нового поля 'completed'
+                val completedCount = subTasks.count { it.completed }
+                val totalCount = subTasks.size
+                val percent = if (totalCount == 0) 0 else (completedCount.toFloat() / totalCount * 100).toInt()
+                
+                updateUIAndCloudProgress(percent)
+            }
     }
 
-    private fun saveSubTask(title: String) {
-        lifecycleScope.launch {
-            val newSubTask = SubTask(taskId = taskId, title = title)
-            db.subTaskDao().insertSubTask(newSubTask)
-            loadSubTasks()
-        }
+    private fun saveSubTask(title: String, deadline: String) {
+        val newSubTask = SubTask(taskId = taskId, title = title, deadline = deadline)
+        firestore.collection("subtasks").add(newSubTask)
     }
 
     private fun updateSubTask(subTask: SubTask) {
-        lifecycleScope.launch {
-            db.subTaskDao().updateSubTask(subTask)
-            loadSubTasks()
-        }
+        if (subTask.id.isEmpty()) return
+        firestore.collection("subtasks").document(subTask.id).set(subTask)
     }
 
     private fun deleteSubTask(subTask: SubTask) {
-        lifecycleScope.launch {
-            db.subTaskDao().deleteSubTask(subTask)
-            loadSubTasks()
-        }
+        if (subTask.id.isEmpty()) return
+        firestore.collection("subtasks").document(subTask.id).delete()
     }
 
     private fun editSubTask(subTask: SubTask) {
-        // ПРЕДЗАПОЛНЕНИЕ для подзадачи
-        val dialog = AddTaskDialog(initialTitle = subTask.title) { newTitle, _ ->
-            lifecycleScope.launch {
-                db.subTaskDao().updateSubTask(subTask.copy(title = newTitle))
-                loadSubTasks()
-            }
+        val dialog = AddTaskDialog(
+            initialTitle = subTask.title,
+            initialDeadline = subTask.deadline
+        ) { newTitle, newDeadline ->
+            updateSubTask(subTask.copy(title = newTitle, deadline = newDeadline))
         }
         dialog.show(supportFragmentManager, "EditSubTaskDialog")
     }
 
     private fun deleteMainTask() {
-        lifecycleScope.launch {
-            currentTask?.let {
-                db.taskDao().deleteTask(it)
-                finish()
+        firestore.collection("subtasks").whereEqualTo("taskId", taskId).get()
+            .addOnSuccessListener { snapshots ->
+                for (doc in snapshots) {
+                    doc.reference.delete()
+                }
+                firestore.collection("tasks").document(taskId).delete()
+                    .addOnSuccessListener { finish() }
             }
-        }
     }
 
     private fun editMainTask() {
-        // ПРЕДЗАПОЛНЕНИЕ для основной задачи
         currentTask?.let { task ->
             val dialog = AddTaskDialog(
                 initialTitle = task.title,
                 initialDeadline = task.deadline
             ) { newTitle, newDeadline ->
-                lifecycleScope.launch {
-                    val updated = task.copy(title = newTitle, deadline = newDeadline)
-                    db.taskDao().updateTask(updated)
-                    loadTaskInfo()
-                }
+                val updatedData = mapOf(
+                    "title" to newTitle,
+                    "deadline" to newDeadline
+                )
+                firestore.collection("tasks").document(taskId).update(updatedData)
             }
             dialog.show(supportFragmentManager, "EditMainTaskDialog")
         }
     }
 
-    private suspend fun calculateAndSaveProgress(subTasks: List<SubTask>) {
-        val percent = if (subTasks.isEmpty()) 0 else {
-            (subTasks.count { it.isCompleted }.toFloat() / subTasks.size * 100).toInt()
-        }
+    private fun updateUIAndCloudProgress(percent: Int) {
+        // Мгновенно обновляем полоску на экране
+        binding.pbTaskDetail.progress = percent
+        binding.tvPercentDetail.text = "$percent%"
         
-        currentTask?.let {
-            val updatedTask = it.copy(percent = percent)
-            db.taskDao().updateTask(updatedTask)
-            binding.pbTaskDetail.progress = percent
-            binding.tvPercentDetail.text = "$percent%"
-            currentTask = updatedTask
+        // Отправляем в облако только если значение изменилось
+        if (currentTask?.percent != percent) {
+            firestore.collection("tasks").document(taskId).update("percent", percent)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        subTasksListener?.remove()
+        taskListener?.remove()
+        _binding = null
     }
 }
