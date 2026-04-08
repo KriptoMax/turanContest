@@ -8,34 +8,26 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
-import com.example.studyproject3.ControllerActivity.TaskAdapter
+import com.example.studyproject3.BaseTasks.SubTask
 import com.example.studyproject3.BaseTasks.Task
 import com.example.studyproject3.data.RoomDatabase.AppDatabase
-import com.example.studyproject3.HandlerController.BackTransitionController
-import com.example.studyproject3.HandlerController.TransitionController
-import com.example.studyproject3.databinding.ActivityMainBinding
+import com.example.studyproject3.databinding.ActivityDetailTaskBinding
 import kotlinx.coroutines.launch
 import com.example.studyproject3.R
-import com.example.studyproject3.databinding.ActivityDetailTaskBinding
-
 
 class DetailTaskActivity : AppCompatActivity() {
     private var _binding: ActivityDetailTaskBinding? = null
-    private val binding
-        get() = _binding ?: throw IllegalStateException("Binding for MainActivity must not be null") //ActivityLearnWordBinding
+    private val binding get() = _binding!!
 
-    private lateinit var taskAdapter: TaskAdapter
+    private lateinit var subTaskAdapter: SubTaskAdapter
+    private var taskId: Int = -1
+    private var currentTask: Task? = null
 
-    //Кустарная инициализация базы
     val db by lazy {
-        Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java, "my_app_db"
-        )
+        Room.databaseBuilder(applicationContext, AppDatabase::class.java, "my_app_db")
             .fallbackToDestructiveMigration()
             .build()
     }
-    //Граница кустарной базы
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,89 +35,138 @@ class DetailTaskActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        //setOnclickListener()
-        //val controller = TransitionController(binding, this)
-        //controller.oneTask()
-
+        taskId = intent.getIntExtra("TASK_ID", -1)
+        
         setupRecyclerView()
-        loadTasks()
-        binding.btn1Create1.setOnClickListener {
-            val dialog = AddTaskDialog{ newTaskTitle ->
-                //Код сработает если нажать.
-                saveTask(newTaskTitle)
-                Toast.makeText(this, "Добавлено: $newTaskTitle", Toast.LENGTH_SHORT).show()
+        loadTaskInfo()
+        loadSubTasks()
 
-                //Добавление в RecyclerView
-            }
-            dialog.show(supportFragmentManager, "AddTaskDialog")
+        binding.tvTaskVault.setOnClickListener {
+            finish()
         }
-        binding.btnProfile.setOnClickListener { view ->
-            val popup = PopupMenu(this, view)
-            popup.menuInflater.inflate(R.menu.top_app_menu, popup.menu)
 
+        binding.btnMenu.setOnClickListener { view ->
+            val popup = PopupMenu(this, view)
+            popup.menuInflater.inflate(R.menu.task_context_menu, popup.menu)
             popup.setOnMenuItemClickListener { item ->
-                if (item.itemId == R.id.creator_nickname) {
-                    Toast.makeText(this, "Это ваш профиль", Toast.LENGTH_SHORT).show()
-                    true
-                } else false
+                when (item.itemId) {
+                    R.id.action_delete -> { deleteMainTask(); true }
+                    R.id.action_edit -> { editMainTask(); true }
+                    else -> false
+                }
             }
             popup.show()
+        }
+
+        binding.btn1Create1.setOnClickListener {
+            val dialog = AddTaskDialog { title, _ ->
+                saveSubTask(title)
+            }
+            dialog.show(supportFragmentManager, "AddSubTaskDialog")
         }
     }
 
     private fun setupRecyclerView() {
-        taskAdapter = TaskAdapter(
+        subTaskAdapter = SubTaskAdapter(
             mutableListOf(),
-            onDelete = { task ->
-                lifecycleScope.launch {
-                    db.taskDao().deleteTask(task)
-                    loadTasks()
-                }
-            },//
-            onEdit = { task ->
-                // Открываем диалог для редактирования существующей задачи
-                val dialog = AddTaskDialog { updatedTitle ->
-                    updateTask(task, updatedTitle)
-                }
-                dialog.show(supportFragmentManager, "EditTaskDialog")
-            }
+            onToggle = { subTask -> updateSubTask(subTask) },
+            onDelete = { subTask -> deleteSubTask(subTask) },
+            onEdit = { subTask -> editSubTask(subTask) }
         )
         binding.recV.layoutManager = LinearLayoutManager(this)
-        binding.recV.adapter = taskAdapter
+        binding.recV.adapter = subTaskAdapter
     }
-    private fun loadTasks(){
-        lifecycleScope.launch{
-            val tasks = db.taskDao().getAllTasks()
-            taskAdapter.updateData(tasks)
-        }
-    }
-    private fun saveTask(title: String){
-        lifecycleScope.launch{
-            val newTask = Task(title = title)
-            db.taskDao().insertTask(newTask)
-            loadTasks()
-        }
-    }
-    private fun updateTask(task: Task, newTitle: String) {
+
+    private fun loadTaskInfo() {
         lifecycleScope.launch {
-            // Создаем копию задачи с новым заголовком (id остается прежним)
-            val updatedTask = task.copy(title = newTitle)
+            currentTask = db.taskDao().getAllTasks().find { it.id == taskId }
+            currentTask?.let {
+                binding.tvTaskName.text = it.title
+                binding.tvDeadlineDetail.text = "До: ${it.deadline}"
+                binding.pbTaskDetail.progress = it.percent
+                binding.tvPercentDetail.text = "${it.percent}%"
+            }
+        }
+    }
+
+    private fun loadSubTasks() {
+        lifecycleScope.launch {
+            val subTasks = db.subTaskDao().getSubTasksByTaskId(taskId)
+            subTaskAdapter.updateData(subTasks)
+            calculateAndSaveProgress(subTasks)
+        }
+    }
+
+    private fun saveSubTask(title: String) {
+        lifecycleScope.launch {
+            val newSubTask = SubTask(taskId = taskId, title = title)
+            db.subTaskDao().insertSubTask(newSubTask)
+            loadSubTasks()
+        }
+    }
+
+    private fun updateSubTask(subTask: SubTask) {
+        lifecycleScope.launch {
+            db.subTaskDao().updateSubTask(subTask)
+            loadSubTasks()
+        }
+    }
+
+    private fun deleteSubTask(subTask: SubTask) {
+        lifecycleScope.launch {
+            db.subTaskDao().deleteSubTask(subTask)
+            loadSubTasks()
+        }
+    }
+
+    private fun editSubTask(subTask: SubTask) {
+        // ПРЕДЗАПОЛНЕНИЕ для подзадачи
+        val dialog = AddTaskDialog(initialTitle = subTask.title) { newTitle, _ ->
+            lifecycleScope.launch {
+                db.subTaskDao().updateSubTask(subTask.copy(title = newTitle))
+                loadSubTasks()
+            }
+        }
+        dialog.show(supportFragmentManager, "EditSubTaskDialog")
+    }
+
+    private fun deleteMainTask() {
+        lifecycleScope.launch {
+            currentTask?.let {
+                db.taskDao().deleteTask(it)
+                finish()
+            }
+        }
+    }
+
+    private fun editMainTask() {
+        // ПРЕДЗАПОЛНЕНИЕ для основной задачи
+        currentTask?.let { task ->
+            val dialog = AddTaskDialog(
+                initialTitle = task.title,
+                initialDeadline = task.deadline
+            ) { newTitle, newDeadline ->
+                lifecycleScope.launch {
+                    val updated = task.copy(title = newTitle, deadline = newDeadline)
+                    db.taskDao().updateTask(updated)
+                    loadTaskInfo()
+                }
+            }
+            dialog.show(supportFragmentManager, "EditMainTaskDialog")
+        }
+    }
+
+    private suspend fun calculateAndSaveProgress(subTasks: List<SubTask>) {
+        val percent = if (subTasks.isEmpty()) 0 else {
+            (subTasks.count { it.isCompleted }.toFloat() / subTasks.size * 100).toInt()
+        }
+        
+        currentTask?.let {
+            val updatedTask = it.copy(percent = percent)
             db.taskDao().updateTask(updatedTask)
-            loadTasks() // Обновляем список на экране
-            Toast.makeText(this@DetailTaskActivity, "Задача обновлена", Toast.LENGTH_SHORT).show()
+            binding.pbTaskDetail.progress = percent
+            binding.tvPercentDetail.text = "$percent%"
+            currentTask = updatedTask
         }
     }
 }
-//lifecycleScope.launch {
-//val userDao = db.userDao()
-
-//Имитация регистрации Создателя
-//val creator = User(username = "Boss", password = "qwerty", role = "CREATOR")
-//userDao.registerUser(creator)
-
-//Проверка, сохранился ли он
-//val users = userDao.getAllUsers()
-//binding.btn1Create.setOnClickListener {
-//binding.tvTaskDeducation.text = "Пользователи в базе данных ${users} "
-//}
-//}

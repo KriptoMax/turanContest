@@ -2,7 +2,11 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.StudyProject3" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="customBackgroundColor">@color/fourGreen</item>
+        <item name="customToolbarTopColor">@color/threeGreen</item>
+        <item name="customToolbarBottomColor">@color/secondGreen</item>
+        <item name="customElementColor">@color/firstGreen</item>
+        <item name="customTextColor">@color/black</item>
     </style>
 
     <style name="Theme.StudyProject3" parent="Base.Theme.StudyProject3" />

@@ -23,6 +23,10 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".ControllerActivity.DetailTaskActivity"
+            android:exported="false"
+            android:label="Подробнее о задании"/>
+        <activity
             android:name=".ControllerActivity.OneTaskActivity"
             android:exported="false"
             android:label="1 Задание"/>

@@ -8,10 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
-import com.example.studyproject3.ControllerActivity.TaskAdapter
 import com.example.studyproject3.BaseTasks.Task
 import com.example.studyproject3.data.RoomDatabase.AppDatabase
-import com.example.studyproject3.HandlerController.BackTransitionController
 import com.example.studyproject3.HandlerController.TransitionController
 import com.example.studyproject3.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
@@ -21,11 +19,10 @@ import com.example.studyproject3.R
 class MainActivity : AppCompatActivity() {
     private var _binding: ActivityMainBinding? = null
     private val binding
-        get() = _binding ?: throw IllegalStateException("Binding for MainActivity must not be null") //ActivityLearnWordBinding
+        get() = _binding ?: throw IllegalStateException("Binding for MainActivity must not be null")
 
     private lateinit var taskAdapter: TaskAdapter
 
-    //Кустарная инициализация базы
     val db by lazy {
         Room.databaseBuilder(
             applicationContext,
@@ -34,7 +31,6 @@ class MainActivity : AppCompatActivity() {
             .fallbackToDestructiveMigration()
             .build()
     }
-    //Граница кустарной базы
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,21 +38,20 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
 
-        //setOnclickListener()
         val controller = TransitionController(binding, this)
         controller.oneTask()
         setupRecyclerView()
         loadTasks()
-        binding.btn1Create.setOnClickListener {
-            val dialog = AddTaskDialog{ newTaskTitle ->
-                //Код сработает если нажать.
-                saveTask(newTaskTitle)
-                Toast.makeText(this, "Добавлено: $newTaskTitle", Toast.LENGTH_SHORT).show()
 
-                //Добавление в RecyclerView
+        binding.btn1Create.setOnClickListener {
+            // Для новой задачи передаем пустые строки
+            val dialog = AddTaskDialog { title, deadline ->
+                saveTask(title, deadline)
+                Toast.makeText(this, "Добавлено: $title", Toast.LENGTH_SHORT).show()
             }
             dialog.show(supportFragmentManager, "AddTaskDialog")
         }
+
         binding.btnProfile.setOnClickListener { view ->
             val popup = PopupMenu(this, view)
             popup.menuInflater.inflate(R.menu.top_app_menu, popup.menu)
@@ -79,11 +74,14 @@ class MainActivity : AppCompatActivity() {
                     db.taskDao().deleteTask(task)
                     loadTasks()
                 }
-            },//
+            },
             onEdit = { task ->
-                // Открываем диалог для редактирования существующей задачи
-                val dialog = AddTaskDialog { updatedTitle ->
-                    updateTask(task, updatedTitle)
+                // Передаем текущие данные задачи для редактирования
+                val dialog = AddTaskDialog(
+                    initialTitle = task.title,
+                    initialDeadline = task.deadline
+                ) { updatedTitle, updatedDeadline ->
+                    updateTask(task, updatedTitle, updatedDeadline)
                 }
                 dialog.show(supportFragmentManager, "EditTaskDialog")
             }
@@ -91,39 +89,33 @@ class MainActivity : AppCompatActivity() {
         binding.recV.layoutManager = LinearLayoutManager(this)
         binding.recV.adapter = taskAdapter
     }
-    private fun loadTasks(){
-        lifecycleScope.launch{
+
+    private fun loadTasks() {
+        lifecycleScope.launch {
             val tasks = db.taskDao().getAllTasks()
             taskAdapter.updateData(tasks)
         }
     }
-    private fun saveTask(title: String){
-        lifecycleScope.launch{
-            val newTask = Task(title = title)
+
+    private fun saveTask(title: String, deadline: String) {
+        lifecycleScope.launch {
+            val newTask = Task(title = title, deadline = deadline)
             db.taskDao().insertTask(newTask)
             loadTasks()
         }
     }
-    private fun updateTask(task: Task, newTitle: String) {
+
+    private fun updateTask(task: Task, newTitle: String, newDeadline: String) {
         lifecycleScope.launch {
-            // Создаем копию задачи с новым заголовком (id остается прежним)
-            val updatedTask = task.copy(title = newTitle)
+            val updatedTask = task.copy(title = newTitle, deadline = newDeadline)
             db.taskDao().updateTask(updatedTask)
-            loadTasks() // Обновляем список на экране
+            loadTasks()
             Toast.makeText(this@MainActivity, "Задача обновлена", Toast.LENGTH_SHORT).show()
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        loadTasks()
+    }
 }
-//lifecycleScope.launch {
-//val userDao = db.userDao()
-
-//Имитация регистрации Создателя
-//val creator = User(username = "Boss", password = "qwerty", role = "CREATOR")
-//userDao.registerUser(creator)
-
-//Проверка, сохранился ли он
-//val users = userDao.getAllUsers()
-//binding.btn1Create.setOnClickListener {
-//binding.tvTaskDeducation.text = "Пользователи в базе данных ${users} "
-//}
-//}

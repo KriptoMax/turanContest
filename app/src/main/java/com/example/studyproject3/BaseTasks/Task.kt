@@ -8,6 +8,6 @@ data class Task(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val title: String = "",
-    val destination: String = "",
+    val deadline: String = "",
     val percent: Int = 0,
 )

@@ -3,73 +3,48 @@
     android:layout_width="350dp"
     android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
     android:padding="20dp"
-    android:layout_marginStart="30dp"
-    android:layout_marginVertical="30dp"
     android:background="@drawable/shape_dialog_background">
 
     <TextView
+        android:id="@+id/tvTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Форма для создания Задачи"
+        android:text="Новая Задача"
         android:textColor="@color/black"
         android:textSize="18sp"
         android:fontFamily="@font/rubik_regular"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
+
     <EditText
         android:id="@+id/etTaskName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginVertical="30dp"
-        android:hint="Название"
-        android:textColorHint="@color/black"
-        android:layout_marginTop="10dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        />
+        android:layout_marginTop="16dp"
+        android:hint="Название задачи"
+        android:textColorHint="@color/grey"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle" />
+
+    <EditText
+        android:id="@+id/etDeadline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Дедлайн (напр. 25.12)"
+        android:textColorHint="@color/grey"
+        app:layout_constraintTop_toBottomOf="@id/etTaskName" />
 
     <Button
         android:id="@+id/btnSave"
-        android:layout_width="90dp"
-        android:layout_height="40dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="Сохранить"
         android:textColor="@color/white"
-        android:padding="0dp"
-        android:layout_marginVertical="230dp"
-        android:layout_marginTop="10dp"
         android:backgroundTint="@color/threeGreen"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        />
-    <Button
-        android:id="@+id/btnDelete"
-        android:layout_width="90dp"
-        android:layout_height="40dp"
-        android:text="Удалить"
-        android:textColor="@color/white"
-        android:padding="0dp"
-        android:layout_marginVertical="230dp"
-        android:layout_marginStart="100dp"
-        android:layout_marginTop="10dp"
-        android:backgroundTint="@color/red"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        />
-    <Button
-        android:id="@+id/btnArchive"
-        android:layout_width="110dp"
-        android:layout_height="40dp"
-        android:text="Архивировать"
-        android:textColor="@color/black"
-        android:layout_marginVertical="230dp"
-        android:layout_marginStart="200dp"
-        android:padding="0dp"
-        android:layout_marginTop="10dp"
-        android:backgroundTint="@color/fourGreen"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        />
+        app:layout_constraintTop_toBottomOf="@id/etDeadline" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
